@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayrollOS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --surface2: #181c24;
+      --border: #252a35;
+      --accent: #00e5a0;
+      --accent2: #0077ff;
+      --warn: #ff6b35;
+      --text: #e8eaf0;
+      --muted: #6b7385;
+      --green: #00e5a0;
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Noise texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9998;
+      opacity: 0.4;
+    }
+
+    /* Header */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(17,19,24,0.9);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 12px var(--accent); }
+      50% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
+    }
+
+    .header-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.6;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0,229,160,0.1);
+      border: 1px solid rgba(0,229,160,0.3);
+      color: var(--accent);
+      font-size: 0.65rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 61px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 30px 0;
+      background: var(--surface);
+    }
+
+    .sidebar-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 24px 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+      color: var(--muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+      position: relative;
+      user-select: none;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+      border-left-color: var(--border);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(0,229,160,0.05);
+    }
+
+    .nav-item.active .nav-icon { color: var(--accent); }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: 0.6rem;
+      background: var(--border);
+      padding: 2px 7px;
+      border-radius: 10px;
+      color: var(--muted);
+    }
+
+    .nav-item.active .nav-badge {
+      background: rgba(0,229,160,0.2);
+      color: var(--accent);
+    }
+
+    .nav-icon {
+      font-size: 1rem;
+      width: 18px;
+      text-align: center;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 24px;
+    }
+
+    .nav-exit {
+      color: var(--warn) !important;
+    }
+    .nav-exit:hover { border-left-color: var(--warn) !important; background: rgba(255,107,53,0.05) !important; }
+
+    /* Main content */
+    .main {
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Page title */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 2rem;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .page-subtitle {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,229,160,0.4), transparent);
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(0,229,160,0.1);
+      border: 1px solid rgba(0,229,160,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    /* Form elements */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,160,0.1);
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    /* Buttons */
+    .btn {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 11px 24px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #00ffb3;
+      box-shadow: 0 0 20px rgba(0,229,160,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: var(--text);
+    }
+
+    .btn-danger {
+      background: rgba(255,107,53,0.1);
+      color: var(--warn);
+      border: 1px solid rgba(255,107,53,0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255,107,53,0.2);
+      box-shadow: 0 0 16px rgba(255,107,53,0.2);
+    }
+
+    .form-actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Output terminal */
+    .terminal {
+      background: #07090d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28ca41; }
+
+    .terminal-title {
+      margin-left: 8px;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .terminal-clear {
+      margin-left: auto;
+      font-size: 0.65rem;
+      color: var(--muted);
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+
+    .terminal-clear:hover { color: var(--accent); }
+
+    .terminal-body {
+      padding: 20px;
+      min-height: 220px;
+      max-height: 380px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      line-height: 1.8;
+    }
+
+    .terminal-body::-webkit-scrollbar { width: 4px; }
+    .terminal-body::-webkit-scrollbar-track { background: transparent; }
+    .terminal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .out-line { display: block; }
+    .out-line.info { color: var(--accent); }
+    .out-line.warn { color: var(--warn); }
+    .out-line.muted { color: var(--muted); }
+    .out-line.normal { color: #c8d0e0; }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: var(--accent);
+      vertical-align: middle;
+      margin-left: 3px;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Dashboard view */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .dash-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dash-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,229,160,0.03), transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .dash-card:hover {
+      border-color: rgba(0,229,160,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,229,160,0.1);
+    }
+
+    .dash-card:hover::after { opacity: 1; }
+
+    .dash-icon {
+      font-size: 1.6rem;
+      margin-bottom: 14px;
+    }
+
+    .dash-label {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .dash-desc {
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .dash-arrow {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: var(--muted);
+      font-size: 1rem;
+      transition: transform 0.2s, color 0.2s;
+    }
+
+    .dash-card:hover .dash-arrow {
+      transform: translate(2px, -2px);
+      color: var(--accent);
+    }
+
+    /* Section display */
+    .section { display: none; }
+    .section.active { display: flex; flex-direction: column; gap: 24px; }
+
+    /* Confirm modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+    }
+
+    .modal h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    .modal p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); padding: 16px 0; }
+      .sidebar-label { display: none; }
+      .nav-item { padding: 10px 16px; }
+      .main { padding: 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .page-title { font-size: 1.5rem; }
+    }
+
+    /* Animations */
+    .fade-in {
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-row .form-group { flex: 1; }
+
+    /* Wasm status */
+    #wasm-status {
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding: 8px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #wasm-status.ready { color: var(--accent); border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.05); }
+    #wasm-status.error { color: var(--warn); border-color: rgba(255,107,53,0.3); }
+
+    .spinner {
+      width: 10px; height: 10px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    PayrollOS
+  </div>
+  <div class="header-meta">
+    <div id="wasm-status"><span class="spinner"></span> Initializing WASM module...</div>
+  </div>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-label">Navigation</div>
+    <div class="nav-item active" data-section="dashboard" onclick="navigate('dashboard', this)">
+      <span class="nav-icon">⬡</span> Dashboard
+      <span class="nav-badge">HOME</span>
+    </div>
+    <div class="nav-item" data-section="add-employee" onclick="navigate('add-employee', this)">
+      <span class="nav-icon">＋</span> Add Employee
+      <span class="nav-badge">01</span>
+    </div>
+    <div class="nav-item" data-section="search-employee" onclick="navigate('search-employee', this)">
+      <span class="nav-icon">◎</span> Search Employee
+      <span class="nav-badge">02</span>
+    </div>
+    <div class="nav-item" data-section="gen-payslip" onclick="navigate('gen-payslip', this)">
+      <span class="nav-icon">▤</span> Generate Payslip
+      <span class="nav-badge">03</span>
+    </div>
+    <div class="nav-item" data-section="list-employees" onclick="navigate('list-employees', this)">
+      <span class="nav-icon">≡</span> List All Employees
+      <span class="nav-badge">04</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item nav-exit" onclick="confirmExit()">
+      <span class="nav-icon">⏻</span> Exit Program
+      <span class="nav-badge">00</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="section active fade-in">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Payroll management system — select an operation to proceed</div>
+        </div>
+        <div class="status-badge">
+          <span>●</span> SYSTEM ONLINE
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dash-card" onclick="navigate('add-employee')">
+          <div class="dash-icon">👤</div>
+          <div class="dash-label">Add Employee</div>
+          <div class="dash-desc">Register a new employee record with ID, name, salary, and department.</div>
+          <div class="dash-arrow">↗</div>
+        </div>
+        <div class="dash-card" onclick="navigate('search-employee')">
+          <div class="dash-icon">🔍</div>
+          <div class="dash-label">Search Employee</div>
+          <div class="dash-desc">Look up an existing employee by their unique employee ID.</div>
+          <div class="dash-arrow">↗</div>
+        </div>
+        <div class="dash-card" onclick="navigate('gen-payslip')">
+          <div class="dash-icon">📄</div>
+          <div class="dash-label">Generate Payslip</div>
+          <div class="dash-desc">Produce a detailed payslip report for any registered employee.</div>
+          <div class="dash-arrow">↗</div>
+        </div>
+        <div class="dash-card" onclick="navigate('list-employees')">
+          <div class="dash-icon">📋</div>
+          <div class="dash-label">List All Employees</div>
+          <div class="dash-desc">View a complete directory of all employees in the system.</div>
+          <div class="dash-arrow">↗</div>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+          <span class="terminal-title">SYSTEM OUTPUT — stdout</span>
+          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+        </div>
+        <div class="terminal-body" id="output">
+          <span class="out-line muted">// PayrollOS v1.0 — Emscripten WebAssembly runtime</span>
+          <span class="out-line muted">// Waiting for module initialisation...</span>
+          <span class="cursor-blink"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADD EMPLOYEE -->
+    <section id="add-employee" class="section fade-in">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Add Employee</div>
+          <div class="page-subtitle">Register a new employee record in the system</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">👤</div>
+          Employee Details
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="emp-id">Employee ID</label>
+            <input type="text" id="emp-id" placeholder="e.g. EMP001" />
+          </div>
+          <div class="form-group">
+            <label for="emp-name">Full Name</label>
+            <input type="text" id="emp-name" placeholder="e.g. Jane Smith" />
+          </div>
+          <div class="form-group">
+            <label for="emp-salary">Base Salary</label>
+            <input type="number" id="emp-salary" placeholder="e.g. 75000" />
+          </div>
+          <div class="form-group">
+            <label for="emp-dept">Department</label>
+            <input type="text" id="emp-dept" placeholder="e.g. Engineering" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitAddEmployee()">
+            ＋ Submit Employee
+          </button>
+          <button class="btn btn-ghost" onclick="clearAddForm()">Reset</button>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+          <span class="terminal-title">OUTPUT</span>
+          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+        </div>
+        <div class="terminal-body" id="output-add">
+          <span class="out-line muted">// Awaiting input...</span>
+          <span class="cursor-blink"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH EMPLOYEE -->
+    <section id="search-employee" class="section fade-in">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Search Employee</div>
+          <div class="page-subtitle">Query the payroll database by employee ID</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">🔍</div>
+          Search by Employee ID
+        </div>
+        <div class="input-row">
+          <div class="form-group">
+            <label for="search-id">Employee ID</label>
+            <input type="text" id="search-id" placeholder="e.g. EMP001" onkeydown="if(event.key==='Enter') submitSearch()" />
+          </div>
+          <button class="btn btn-primary" onclick="submitSearch()">◎ Search</button>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+          <span class="terminal-title">OUTPUT</span>
+          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+        </div>
+        <div class="terminal-body" id="output-search">
+          <span class="out-line muted">// Awaiting search query...</span>
+          <span class="cursor-blink"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- GENERATE PAYSLIP -->
+    <section id="gen-payslip" class="section fade-in">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Generate Payslip</div>
+          <div class="page-subtitle">Produce a detailed payslip for an employee</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">📄</div>
+          Payslip Generation
+        </div>
+        <div class="input-row">
+          <div class="form-group">
+            <label for="payslip-id">Employee ID</label>
+            <input type="text" id="payslip-id" placeholder="e.g. EMP001" onkeydown="if(event.key==='Enter') submitPayslip()" />
+          </div>
+          <button class="btn btn-primary" onclick="submitPayslip()">▤ Generate</button>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+          <span class="terminal-title">PAYSLIP OUTPUT</span>
+          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+        </div>
+        <div class="terminal-body" id="output-payslip">
+          <span class="out-line muted">// Enter an employee ID to generate payslip...</span>
+          <span class="cursor-blink"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIST ALL EMPLOYEES -->
+    <section id="list-employees" class="section fade-in">
+      <div class="page-header">
+        <div>
+          <div class="page-title">All Employees</div>
+          <div class="page-subtitle">Complete directory of registered employees</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">≡</div>
+          Employee Directory
+        </div>
+        <button class="btn btn-primary" onclick="submitListAll()">≡ Fetch All Employees</button>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+          <span class="terminal-title">DIRECTORY OUTPUT</span>
+          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+        </div>
+        <div class="terminal-body" id="output-list">
+          <span class="out-line muted">// Click "Fetch All Employees" to load the directory...</span>
+          <span class="cursor-blink"></span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Exit Modal -->
+<div class="modal-overlay" id="exit-modal">
+  <div class="modal">
+    <h3>Exit PayrollOS?</h3>
+    <p>This will send the exit command (0) to the C program and terminate the session. All unsaved data will be lost.</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="doExit()">⏻ Exit</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Emscripten compiled module -->
+<script src="main.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+//  WASM / Emscripten bridge
+// ─────────────────────────────────────────────
+
+let inputQueue = [];
+let moduleReady = false;
+let activeOutputEl = null;
+
+// Emscripten Module configuration
+// Must be defined BEFORE main.js loads (or merged via Module object)
+var Module = {
+  // Feed stdin from our input queue
+  stdin: function () {
+    if (inputQueue.length > 0) {
+      const line = inputQueue.shift();
+      let i = 0;
+      return function () {
+        if (i < line.length) return line.charCodeAt(i++);
+        if (i === line.length) { i++; return 10; } // newline
+        return null;
+      };
+    }
+    return null;
+  },
+
+  // Capture stdout to active terminal panel
+  print: function (text) {
+    appendOutput(text, 'normal');
+  },
+
+  printErr: function (text) {
+    appendOutput(text, 'warn');
+  },
+
+  onRuntimeInitialized: function () {
+    moduleReady = true;
+    const statusEl = document.getElementById('wasm-status');
+    statusEl.textContent = '✓ WASM module ready';
+    statusEl.className = 'ready';
+    appendOutput('// WASM runtime initialised successfully.', 'info', 'output');
+    appendOutput('// Select an operation from the sidebar.', 'muted', 'output');
+  }
+};
+
+// Gracefully handle missing main.js
+window.addEventListener('error', function (e) {
+  if (e.filename && e.filename.includes('main.js')) {
+    const statusEl = document.getElementById('wasm-status');
+    statusEl.textContent = '⚠ main.js not found — demo mode';
+    statusEl.className = 'error';
+    appendOutput('// [DEMO MODE] main.js not loaded.', 'warn', 'output');
+    appendOutput('// Place your compiled main.js + main.wasm next to this file.', 'muted', 'output');
+    moduleReady = false; // will use simulation below
+  }
+}, true);
+
+
+// ─────────────────────────────────────────────
+//  Output helpers
+// ─────────────────────────────────────────────
+
+function getActiveOutputId() {
+  const sections = ['add-employee', 'search-employee', 'gen-payslip', 'list-employees'];
+  const ids = ['output-add', 'output-search', 'output-payslip', 'output-list'];
+  for (let i = 0; i < sections.length; i++) {
+    if (document.getElementById(sections[i]).classList.contains('active')) return ids[i];
+  }
+  return 'output';
+}
+
+function appendOutput(text, cls = 'normal', targetId = null) {
+  const id = targetId || getActiveOutputId();
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // Remove cursor
+  const cursor = el.querySelector('.cursor-blink');
+  if (cursor) cursor.remove();
+
+  const span = document.createElement('span');
+  span.className = `out-line ${cls}`;
+  span.textContent = text;
+  el.appendChild(span);
+  el.appendChild(document.createElement('br'));
+
+  // Re-add cursor
+  const cur = document.createElement('span');
+  cur.className = 'cursor-blink';
+  el.appendChild(cur);
+
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearOutput() {
+  const id = getActiveOutputId();
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = '<span class="out-line muted">// Output cleared.</span><br><span class="cursor-blink"></span>';
+}
+
+
+// ─────────────────────────────────────────────
+//  Navigation
+// ─────────────────────────────────────────────
+
+function navigate(sectionId, navEl) {
+  // Hide all sections
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  // Show target
+  const target = document.getElementById(sectionId);
+  if (target) {
+    target.classList.add('active');
+    target.classList.remove('fade-in');
+    void target.offsetWidth; // reflow
+    target.classList.add('fade-in');
+  }
+
+  // Activate nav
+  if (navEl) {
+    navEl.classList.add('active');
+  } else {
+    const match = document.querySelector(`[data-section="${sectionId}"]`);
+    if (match) match.classList.add('active');
+  }
+}
+
+
+// ─────────────────────────────────────────────
+//  Send inputs to C program
+// ─────────────────────────────────────────────
+
+function sendToModule(inputs) {
+  if (!moduleReady) {
+    // Demo mode simulation
+    demoSimulate(inputs);
+    return;
+  }
+  inputs.forEach(line => inputQueue.push(line));
+  // Call Module's main (re-run or trigger via stdin)
+  if (typeof Module.callMain === 'function') {
+    Module.callMain([]);
+  } else if (typeof Module._main === 'function') {
+    Module._main();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Demo simulation (no WASM loaded)
+// ─────────────────────────────────────────────
+
+const demoEmployees = {};
+
+function demoSimulate(inputs) {
+  const choice = inputs[0];
+  appendOutput(`> Command: ${choice}`, 'info');
+
+  switch (choice) {
+    case '1': {
+      const [, id, name, salary, dept] = inputs;
+      if (demoEmployees[id]) {
+        appendOutput(`[ERROR] Employee ID ${id} already exists.`, 'warn');
+      } else {
+        demoEmployees[id] = { id, name, salary, dept };
+        appendOutput(`[OK] Employee added successfully.`, 'info');
+        appendOutput(`     ID: ${id} | Name: ${name} | Salary: ${salary} | Dept: ${dept}`, 'normal');
+      }
+      break;
+    }
+    case '2': {
+      const id = inputs[1];
+      const emp = demoEmployees[id];
+      if (emp) {
+        appendOutput(`[FOUND] Employee record:`, 'info');
+        appendOutput(`  ID         : ${emp.id}`, 'normal');
+        appendOutput(`  Name       : ${emp.name}`, 'normal');
+        appendOutput(`  Salary     : $${Number(emp.salary).toLocaleString()}`, 'normal');
+        appendOutput(`  Department : ${emp.dept}`, 'normal');
+      } else {
+        appendOutput(`[NOT FOUND] No employee with ID: ${id}`, 'warn');
+      }
+      break;
+    }
+    case '3': {
+      const id = inputs[1];
+      const emp = demoEmployees[id];
+      if (emp) {
+        const gross = Number(emp.salary);
+        const tax = (gross * 0.2).toFixed(2);
+        const net = (gross - tax).toFixed(2);
+        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
+        appendOutput(`  PAYSLIP — ${new Date().toLocaleDateString()}`, 'info');
+        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
+        appendOutput(`  Employee   : ${emp.name} (${emp.id})`, 'normal');
+        appendOutput(`  Department : ${emp.dept}`, 'normal');
+        appendOutput(`  Gross Pay  : $${gross.toLocaleString()}`, 'normal');
+        appendOutput(`  Tax (20%)  : -$${Number(tax).toLocaleString()}`, 'warn');
+        appendOutput(`  Net Pay    : $${Number(net).toLocaleString()}`, 'info');
+        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
+      } else {
+        appendOutput(`[NOT FOUND] No employee with ID: ${id}`, 'warn');
+      }
+      break;
+    }
+    case '4': {
+      const keys = Object.keys(demoEmployees);
+      if (keys.length === 0) {
+        appendOutput(`[INFO] No employees registered yet.`, 'muted');
+      } else {
+        appendOutput(`[DIRECTORY] ${keys.length} employee(s):`, 'info');
+        keys.forEach((k, i) => {
+          const e = demoEmployees[k];
+          appendOutput(`  ${i+1}. ${e.id.padEnd(10)} ${e.name.padEnd(20)} ${e.dept}`, 'normal');
+        });
+      }
+      break;
+    }
+    case '0':
+      appendOutput(`[EXIT] Program terminated. Session ended.`, 'warn');
+      break;
+    default:
+      appendOutput(`[ERROR] Unknown command: ${choice}`, 'warn');
+  }
+}
+
+
+// ─────────────────────────────────────────────
+//  Action handlers
+// ─────────────────────────────────────────────
+
+function submitAddEmployee() {
+  const id = document.getElementById('emp-id').value.trim();
+  const name = document.getElementById('emp-name').value.trim();
+  const salary = document.getElementById('emp-salary').value.trim();
+  const dept = document.getElementById('emp-dept').value.trim();
+
+  if (!id || !name || !salary || !dept) {
+    appendOutput('[VALIDATION] All fields are required.', 'warn');
+    return;
+  }
+
+  appendOutput(`Submitting: Add Employee — ${name} (${id})`, 'info');
+  sendToModule(['1', id, name, salary, dept]);
+}
+
+function clearAddForm() {
+  ['emp-id','emp-name','emp-salary','emp-dept'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+function submitSearch() {
+  const id = document.getElementById('search-id').value.trim();
+  if (!id) { appendOutput('[VALIDATION] Please enter an Employee ID.', 'warn'); return; }
+  appendOutput(`Searching for employee: ${id}`, 'info');
+  sendToModule(['2', id]);
+}
+
+function submitPayslip() {
+  const id = document.getElementById('payslip-id').value.trim();
+  if (!id) { appendOutput('[VALIDATION] Please enter an Employee ID.', 'warn'); return; }
+  appendOutput(`Generating payslip for: ${id}`, 'info');
+  sendToModule(['3', id]);
+}
+
+function submitListAll() {
+  appendOutput('Fetching employee directory...', 'info');
+  sendToModule(['4']);
+}
+
+function confirmExit() {
+  document.getElementById('exit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('exit-modal').classList.remove('open');
+}
+
+function doExit() {
+  closeModal();
+  navigate('dashboard');
+  appendOutput('Sending exit command (0) to program...', 'warn', 'output');
+  sendToModule(['0']);
+}
+
+// Close modal on backdrop click
+document.getElementById('exit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+
+</body>
+</html>
