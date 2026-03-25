@@ -1,7 +1,7 @@
 /*
  * Employee Payroll System
- * Student Name : [Your Name]
- * Reg No       : [Your Reg No]
+ * Student Name : B Madhusudhanan
+ * Reg No       : 25BCE1189
  *
  * Features: Add, Search, Payslip, List, Delete, Update
  */
@@ -33,6 +33,8 @@ void deleteEmployee();
 void updateEmployee();
 float calcTax(float gross);
 int findByID(int id);
+void saveToFile();
+void loadFromFile();
 
 void readLine(char *buf, int len) {
     if (fgets(buf, len, stdin))
@@ -41,6 +43,8 @@ void readLine(char *buf, int len) {
 
 int main() {
     int choice;
+
+    loadFromFile();
 
     printf("\n===================================\n");
     printf("      EMPLOYEE PAYROLL SYSTEM\n");
@@ -74,6 +78,8 @@ int main() {
             default: printf("Invalid choice.\n");
         }
     } while (choice != 0);
+
+    saveToFile();
 
     return 0;
 }
@@ -260,4 +266,28 @@ void updateEmployee() {
 
     printf("Updated. Gross: Rs %.2f  Tax: Rs %.2f  Net: Rs %.2f\n",
            emp[i].gross, emp[i].tax, emp[i].net);
+}
+
+void saveToFile() {
+    FILE *fp = fopen("employees.dat", "wb");
+    if (!fp) {
+        printf("Error saving file.\n");
+        return;
+    }
+    fwrite(&count, sizeof(int), 1, fp);
+    fwrite(emp, sizeof(struct Employee), count, fp);
+    fclose(fp);
+    printf("Data saved to employees.dat\n");
+}
+
+void loadFromFile() {
+    FILE *fp = fopen("employees.dat", "rb");
+    if (!fp) {
+        // No file yet, start fresh
+        return;
+    }
+    fread(&count, sizeof(int), 1, fp);
+    fread(emp, sizeof(struct Employee), count, fp);
+    fclose(fp);
+    printf("Loaded %d employee(s) from file.\n", count);
 }
