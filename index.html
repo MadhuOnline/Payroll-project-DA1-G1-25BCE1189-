@@ -3,1198 +3,770 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PayrollOS</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <title>Employee Payroll System</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --bg: #0a0c10;
-      --surface: #111318;
-      --surface2: #181c24;
-      --border: #252a35;
-      --accent: #00e5a0;
-      --accent2: #0077ff;
-      --warn: #ff6b35;
-      --text: #e8eaf0;
-      --muted: #6b7385;
-      --green: #00e5a0;
-      --font-display: 'Syne', sans-serif;
-      --font-mono: 'Space Mono', monospace;
-    }
-
+    /* ── Reset & Variables ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-mono);
-      min-height: 100vh;
-      overflow-x: hidden;
+    :root {
+      --bg:        #0b0d11;
+      --surface:   #12151c;
+      --panel:     #191d27;
+      --border:    #252a38;
+      --accent:    #00e5a0;
+      --accent2:   #0088ff;
+      --warn:      #ffb800;
+      --danger:    #ff4757;
+      --text:      #c9d1e0;
+      --text-dim:  #505875;
+      --text-muted:#3a3f55;
+      --green:     #00e5a0;
+      --mono:      'JetBrains Mono', monospace;
+      --display:   'Syne', sans-serif;
+      --radius:    8px;
+      --sidebar-w: 230px;
     }
 
-    /* Scanline overlay */
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    /* ── Scanline overlay ── */
     body::before {
       content: '';
+      pointer-events: none;
       position: fixed;
       inset: 0;
       background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.07) 3px,
+        rgba(0,0,0,0.07) 4px
       );
-      pointer-events: none;
       z-index: 9999;
     }
 
-    /* Noise texture */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 9998;
-      opacity: 0.4;
-    }
+    /* ── Layout ── */
+    #app { display: flex; height: 100vh; }
 
-    /* Header */
-    .header {
-      border-bottom: 1px solid var(--border);
-      padding: 18px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(17,19,24,0.9);
-      backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .logo {
-      font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 1.4rem;
-      letter-spacing: -0.02em;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .logo-dot {
-      width: 10px;
-      height: 10px;
-      background: var(--accent);
-      border-radius: 50%;
-      box-shadow: 0 0 12px var(--accent);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 12px var(--accent); }
-      50% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
-    }
-
-    .header-meta {
-      font-size: 0.7rem;
-      color: var(--muted);
-      text-align: right;
-      line-height: 1.6;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(0,229,160,0.1);
-      border: 1px solid rgba(0,229,160,0.3);
-      color: var(--accent);
-      font-size: 0.65rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    /* Layout */
-    .layout {
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      min-height: calc(100vh - 61px);
-    }
-
-    /* Sidebar */
-    .sidebar {
-      border-right: 1px solid var(--border);
-      padding: 30px 0;
+    /* ── Sidebar ── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
       background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
-    .sidebar-label {
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
+    .sidebar-header {
+      padding: 22px 18px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header .logo {
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+    }
+    .sidebar-header .logo span { color: var(--text-dim); font-weight: 400; }
+    .sidebar-header .subtitle {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--muted);
-      padding: 0 24px 12px;
+    }
+
+    #wasm-status {
+      margin: 12px 18px;
+      font-size: 10px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      background: var(--bg);
+      letter-spacing: 0.04em;
+    }
+    #wasm-status.ready  { color: var(--accent);  border-color: var(--accent);  background: rgba(0,229,160,0.07); }
+    #wasm-status.error  { color: var(--warn);     border-color: var(--warn);    background: rgba(255,184,0,0.07); }
+
+    .nav-group-label {
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 14px 18px 5px;
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 14px 24px;
+      gap: 10px;
+      padding: 9px 18px;
       cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      color: var(--text-dim);
+      font-size: 12px;
       border-left: 3px solid transparent;
-      transition: all 0.2s;
-      color: var(--muted);
-      font-size: 0.8rem;
-      letter-spacing: 0.03em;
-      position: relative;
       user-select: none;
     }
-
-    .nav-item:hover {
-      color: var(--text);
-      background: rgba(255,255,255,0.03);
-      border-left-color: var(--border);
-    }
-
+    .nav-item:hover { background: var(--panel); color: var(--text); }
     .nav-item.active {
+      background: var(--panel);
       color: var(--accent);
       border-left-color: var(--accent);
-      background: rgba(0,229,160,0.05);
     }
+    .nav-item .icon { font-size: 14px; width: 18px; text-align: center; opacity: 0.7; }
+    .nav-item.active .icon { opacity: 1; }
 
-    .nav-item.active .nav-icon { color: var(--accent); }
-
-    .nav-badge {
-      margin-left: auto;
-      font-size: 0.6rem;
-      background: var(--border);
-      padding: 2px 7px;
-      border-radius: 10px;
-      color: var(--muted);
-    }
-
-    .nav-item.active .nav-badge {
-      background: rgba(0,229,160,0.2);
-      color: var(--accent);
-    }
-
-    .nav-icon {
-      font-size: 1rem;
-      width: 18px;
-      text-align: center;
-    }
-
-    .nav-divider {
-      height: 1px;
-      background: var(--border);
-      margin: 16px 24px;
-    }
+    .nav-divider { height: 1px; background: var(--border); margin: 8px 18px; }
 
     .nav-exit {
-      color: var(--warn) !important;
+      margin-top: auto;
+      border-top: 1px solid var(--border);
     }
-    .nav-exit:hover { border-left-color: var(--warn) !important; background: rgba(255,107,53,0.05) !important; }
+    .nav-exit .nav-item { color: var(--danger); }
+    .nav-exit .nav-item:hover { background: rgba(255,71,87,0.1); }
 
-    /* Main content */
-    .main {
-      padding: 40px;
+    /* ── Main content ── */
+    #main {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      overflow: hidden;
     }
 
-    /* Page title */
-    .page-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-
-    .page-title {
-      font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 2rem;
-      letter-spacing: -0.03em;
-      color: var(--text);
-      line-height: 1;
-    }
-
-    .page-subtitle {
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-top: 6px;
-    }
-
-    /* Cards */
-    .card {
+    /* ── Top bar ── */
+    #topbar {
+      height: 44px;
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 28px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0,229,160,0.4), transparent);
-    }
-
-    .card-title {
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 1rem;
-      color: var(--text);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-title-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: rgba(0,229,160,0.1);
-      border: 1px solid rgba(0,229,160,0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-    }
-
-    /* Form elements */
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .form-group.full { grid-column: 1 / -1; }
-
-    label {
-      font-size: 0.65rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    input, select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      padding: 11px 14px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      width: 100%;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0,229,160,0.1);
-    }
-
-    input::placeholder { color: var(--muted); }
-
-    /* Buttons */
-    .btn {
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      padding: 11px 24px;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      text-transform: uppercase;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #000;
-    }
-
-    .btn-primary:hover {
-      background: #00ffb3;
-      box-shadow: 0 0 20px rgba(0,229,160,0.4);
-      transform: translateY(-1px);
-    }
-
-    .btn-primary:active { transform: translateY(0); }
-
-    .btn-ghost {
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
-
-    .btn-ghost:hover {
-      color: var(--text);
-      border-color: var(--text);
-    }
-
-    .btn-danger {
-      background: rgba(255,107,53,0.1);
-      color: var(--warn);
-      border: 1px solid rgba(255,107,53,0.3);
-    }
-
-    .btn-danger:hover {
-      background: rgba(255,107,53,0.2);
-      box-shadow: 0 0 16px rgba(255,107,53,0.2);
-    }
-
-    .form-actions {
-      margin-top: 20px;
-      display: flex;
-      gap: 12px;
-    }
-
-    /* Output terminal */
-    .terminal {
-      background: #07090d;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .terminal-bar {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 10px 16px;
-      background: var(--surface2);
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 8px;
     }
-
-    .terminal-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
+    .topbar-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #28ca42; }
+    #topbar-title {
+      margin-left: 12px;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
     }
-    .dot-red { background: #ff5f57; }
-    .dot-yellow { background: #ffbd2e; }
-    .dot-green { background: #28ca41; }
-
-    .terminal-title {
-      margin-left: 8px;
-      font-size: 0.65rem;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-    }
-
-    .terminal-clear {
-      margin-left: auto;
-      font-size: 0.65rem;
-      color: var(--muted);
-      cursor: pointer;
-      letter-spacing: 0.05em;
-    }
-
-    .terminal-clear:hover { color: var(--accent); }
-
-    .terminal-body {
-      padding: 20px;
-      min-height: 220px;
-      max-height: 380px;
-      overflow-y: auto;
-      font-size: 0.8rem;
-      line-height: 1.8;
-    }
-
-    .terminal-body::-webkit-scrollbar { width: 4px; }
-    .terminal-body::-webkit-scrollbar-track { background: transparent; }
-    .terminal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .out-line { display: block; }
-    .out-line.info { color: var(--accent); }
-    .out-line.warn { color: var(--warn); }
-    .out-line.muted { color: var(--muted); }
-    .out-line.normal { color: #c8d0e0; }
-
-    .cursor-blink {
-      display: inline-block;
-      width: 7px;
-      height: 14px;
-      background: var(--accent);
-      vertical-align: middle;
-      margin-left: 3px;
-      animation: blink 1s step-end infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-
-    /* Dashboard view */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-    }
-
-    .dash-card {
-      background: var(--surface);
+    .topbar-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    .topbar-right button {
+      background: none;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 22px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: all 0.25s;
-      position: relative;
+      letter-spacing: 0.04em;
+      transition: all 0.15s;
+    }
+    .topbar-right button:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Content area ── */
+    #content {
+      flex: 1;
+      display: flex;
       overflow: hidden;
     }
 
-    .dash-card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(0,229,160,0.03), transparent);
-      opacity: 0;
-      transition: opacity 0.25s;
-    }
-
-    .dash-card:hover {
-      border-color: rgba(0,229,160,0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,229,160,0.1);
-    }
-
-    .dash-card:hover::after { opacity: 1; }
-
-    .dash-icon {
-      font-size: 1.6rem;
-      margin-bottom: 14px;
-    }
-
-    .dash-label {
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
-
-    .dash-desc {
-      font-size: 0.7rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .dash-arrow {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      color: var(--muted);
-      font-size: 1rem;
-      transition: transform 0.2s, color 0.2s;
-    }
-
-    .dash-card:hover .dash-arrow {
-      transform: translate(2px, -2px);
-      color: var(--accent);
-    }
-
-    /* Section display */
-    .section { display: none; }
-    .section.active { display: flex; flex-direction: column; gap: 24px; }
-
-    /* Confirm modal */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(4px);
-      z-index: 200;
+    /* ── Sections ── */
+    .section {
       display: none;
-      align-items: center;
-      justify-content: center;
+      flex: 1;
+      overflow: hidden;
+    }
+    .section.active {
+      display: flex;
+      flex-direction: column;
+    }
+    .section.fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ── Split pane ── */
+    .split {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .pane-form {
+      width: 340px;
+      min-width: 280px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 24px 22px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .pane-output {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
-    .modal-overlay.open { display: flex; }
-
-    .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 32px;
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-      position: relative;
+    /* ── Form elements ── */
+    .section-title {
+      font-family: var(--display);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
     }
-
-    .modal h3 {
-      font-family: var(--font-display);
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-    }
-
-    .modal p {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 24px;
+    .section-title span { color: var(--accent); }
+    .section-desc {
+      font-size: 11px;
+      color: var(--text-dim);
       line-height: 1.6;
     }
 
-    .modal-actions { display: flex; gap: 12px; justify-content: center; }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .layout { grid-template-columns: 1fr; }
-      .sidebar { border-right: none; border-bottom: 1px solid var(--border); padding: 16px 0; }
-      .sidebar-label { display: none; }
-      .nav-item { padding: 10px 16px; }
-      .main { padding: 20px; }
-      .form-grid { grid-template-columns: 1fr; }
-      .dashboard-grid { grid-template-columns: 1fr; }
-      .page-title { font-size: 1.5rem; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
     }
-
-    /* Animations */
-    .fade-in {
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .input-row {
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
-    }
-
-    .input-row .form-group { flex: 1; }
-
-    /* Wasm status */
-    #wasm-status {
-      font-size: 0.7rem;
-      color: var(--muted);
-      padding: 8px 14px;
-      background: var(--surface2);
+    .field input, .field select {
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 5px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,229,160,0.12);
+    }
+    .field select option { background: var(--panel); }
+
+    .btn-row { display: flex; gap: 8px; }
+    .btn {
+      flex: 1;
+      padding: 9px 14px;
+      border-radius: var(--radius);
+      border: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover { background: #00ffc0; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,229,160,0.3); }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: rgba(255,71,87,0.1); }
+
+    /* ── Output terminal ── */
+    .output-header {
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       display: flex;
       align-items: center;
       gap: 8px;
     }
+    .output-header::before {
+      content: '●';
+      color: var(--accent);
+      font-size: 8px;
+      animation: blink 1.4s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
-    #wasm-status.ready { color: var(--accent); border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.05); }
-    #wasm-status.error { color: var(--warn); border-color: rgba(255,107,53,0.3); }
+    .output-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.8;
+      background: var(--bg);
+    }
+    .output-body::-webkit-scrollbar { width: 4px; }
+    .output-body::-webkit-scrollbar-track { background: transparent; }
+    .output-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    .spinner {
-      width: 10px; height: 10px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .out-line { display: block; }
+    .out-line.normal { color: var(--text); }
+    .out-line.info   { color: var(--accent); }
+    .out-line.warn   { color: var(--warn); }
+    .out-line.muted  { color: var(--text-muted); }
+
+    .cursor-blink {
       display: inline-block;
+      width: 8px; height: 14px;
+      background: var(--accent);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+      border-radius: 1px;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Dashboard ── */
+    #dashboard {
+      padding: 32px;
+      overflow-y: auto;
+    }
+    .dash-hero {
+      max-width: 560px;
+      margin-bottom: 36px;
+    }
+    .dash-hero h1 {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+    .dash-hero h1 em { color: var(--accent); font-style: normal; }
+    .dash-hero p { color: var(--text-dim); font-size: 12px; line-height: 1.7; }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      max-width: 760px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,229,160,0.1);
+    }
+    .card-icon { font-size: 22px; }
+    .card-title {
+      font-family: var(--display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .card-desc { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+    .card-num {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+
+    /* Conditional sub-fields */
+    #upd-basic-wrap, #upd-ot-wrap { transition: opacity 0.2s; }
+
+    /* ── Exit modal ── */
+    #exit-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #exit-modal.open { display: flex; }
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      width: 340px;
+      text-align: center;
+    }
+    .modal-box h2 {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .modal-box p { font-size: 12px; color: var(--text-dim); margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* Scrollbar for pane-form */
+    .pane-form::-webkit-scrollbar { width: 4px; }
+    .pane-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   </style>
 </head>
 <body>
+<div id="app">
 
-<!-- Header -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-dot"></div>
-    PayrollOS
-  </div>
-  <div class="header-meta">
-    <div id="wasm-status"><span class="spinner"></span> Initializing WASM module...</div>
-  </div>
-</header>
-
-<!-- Layout -->
-<div class="layout">
-
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-label">Navigation</div>
-    <div class="nav-item active" data-section="dashboard" onclick="navigate('dashboard', this)">
-      <span class="nav-icon">⬡</span> Dashboard
-      <span class="nav-badge">HOME</span>
+  <!-- ── Sidebar ── -->
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">EPS <span>//</span> Payroll</div>
+      <div class="subtitle">WASM · Employee System</div>
     </div>
+
+    <div id="wasm-status">◌ Initialising WASM…</div>
+
+    <div class="nav-group-label">Navigation</div>
+    <div class="nav-item active" data-section="dashboard" onclick="navigate('dashboard', this)">
+      <span class="icon">⌂</span> Dashboard
+    </div>
+
+    <div class="nav-divider"></div>
+    <div class="nav-group-label">Operations</div>
+
     <div class="nav-item" data-section="add-employee" onclick="navigate('add-employee', this)">
-      <span class="nav-icon">＋</span> Add Employee
-      <span class="nav-badge">01</span>
+      <span class="icon">＋</span> Add Employee
     </div>
     <div class="nav-item" data-section="search-employee" onclick="navigate('search-employee', this)">
-      <span class="nav-icon">◎</span> Search Employee
-      <span class="nav-badge">02</span>
+      <span class="icon">🔍</span> Search Employee
     </div>
     <div class="nav-item" data-section="gen-payslip" onclick="navigate('gen-payslip', this)">
-      <span class="nav-icon">▤</span> Generate Payslip
-      <span class="nav-badge">03</span>
+      <span class="icon">📄</span> Generate Payslip
     </div>
     <div class="nav-item" data-section="list-employees" onclick="navigate('list-employees', this)">
-      <span class="nav-icon">≡</span> List All Employees
-      <span class="nav-badge">04</span>
+      <span class="icon">☰</span> List Employees
     </div>
-    <div class="nav-divider"></div>
-    <div class="nav-item nav-exit" onclick="confirmExit()">
-      <span class="nav-icon">⏻</span> Exit Program
-      <span class="nav-badge">00</span>
+    <div class="nav-item" data-section="del-employee" onclick="navigate('del-employee', this)">
+      <span class="icon">✕</span> Delete Employee
+    </div>
+    <div class="nav-item" data-section="upd-employee" onclick="navigate('upd-employee', this)">
+      <span class="icon">✎</span> Update Employee
+    </div>
+
+    <div class="nav-exit">
+      <div class="nav-item" onclick="confirmExit()">
+        <span class="icon">⏻</span> Exit Session
+      </div>
     </div>
   </nav>
 
-  <!-- Main -->
-  <main class="main">
+  <!-- ── Main area ── -->
+  <div id="main">
 
-    <!-- DASHBOARD -->
-    <section id="dashboard" class="section active fade-in">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Dashboard</div>
-          <div class="page-subtitle">Payroll management system — select an operation to proceed</div>
-        </div>
-        <div class="status-badge">
-          <span>●</span> SYSTEM ONLINE
-        </div>
+    <!-- Top bar -->
+    <div id="topbar">
+      <div class="topbar-dot dot-r"></div>
+      <div class="topbar-dot dot-y"></div>
+      <div class="topbar-dot dot-g"></div>
+      <span id="topbar-title">employee-payroll-system · wasm runtime</span>
+      <div class="topbar-right">
+        <button onclick="clearOutput()">⌫ Clear</button>
       </div>
+    </div>
 
-      <div class="dashboard-grid">
-        <div class="dash-card" onclick="navigate('add-employee')">
-          <div class="dash-icon">👤</div>
-          <div class="dash-label">Add Employee</div>
-          <div class="dash-desc">Register a new employee record with ID, name, salary, and department.</div>
-          <div class="dash-arrow">↗</div>
-        </div>
-        <div class="dash-card" onclick="navigate('search-employee')">
-          <div class="dash-icon">🔍</div>
-          <div class="dash-label">Search Employee</div>
-          <div class="dash-desc">Look up an existing employee by their unique employee ID.</div>
-          <div class="dash-arrow">↗</div>
-        </div>
-        <div class="dash-card" onclick="navigate('gen-payslip')">
-          <div class="dash-icon">📄</div>
-          <div class="dash-label">Generate Payslip</div>
-          <div class="dash-desc">Produce a detailed payslip report for any registered employee.</div>
-          <div class="dash-arrow">↗</div>
-        </div>
-        <div class="dash-card" onclick="navigate('list-employees')">
-          <div class="dash-icon">📋</div>
-          <div class="dash-label">List All Employees</div>
-          <div class="dash-desc">View a complete directory of all employees in the system.</div>
-          <div class="dash-arrow">↗</div>
-        </div>
-      </div>
+    <!-- Content -->
+    <div id="content">
 
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot dot-red"></div>
-          <div class="terminal-dot dot-yellow"></div>
-          <div class="terminal-dot dot-green"></div>
-          <span class="terminal-title">SYSTEM OUTPUT — stdout</span>
-          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
+      <!-- ── Dashboard ── -->
+      <div id="dashboard" class="section active">
+        <div class="dash-hero">
+          <h1>Employee <em>Payroll</em><br>System</h1>
+          <p>A WebAssembly-powered payroll manager compiled from C via Emscripten.<br>
+             All logic runs in your browser via a WASM binary. Select an operation from the sidebar.</p>
         </div>
-        <div class="terminal-body" id="output">
-          <span class="out-line muted">// PayrollOS v1.0 — Emscripten WebAssembly runtime</span>
-          <span class="out-line muted">// Waiting for module initialisation...</span>
-          <span class="cursor-blink"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ADD EMPLOYEE -->
-    <section id="add-employee" class="section fade-in">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Add Employee</div>
-          <div class="page-subtitle">Register a new employee record in the system</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <div class="card-title-icon">👤</div>
-          Employee Details
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="emp-id">Employee ID</label>
-            <input type="text" id="emp-id" placeholder="e.g. EMP001" />
+        <div class="cards-grid">
+          <div class="card" onclick="navigate('add-employee')">
+            <div class="card-icon">👤</div>
+            <div class="card-title">Add Employee</div>
+            <div class="card-desc">Register a new employee with basic pay and OT hours.</div>
+            <div class="card-num">FEATURE · 01</div>
           </div>
-          <div class="form-group">
-            <label for="emp-name">Full Name</label>
-            <input type="text" id="emp-name" placeholder="e.g. Jane Smith" />
+          <div class="card" onclick="navigate('search-employee')">
+            <div class="card-icon">🔍</div>
+            <div class="card-title">Search</div>
+            <div class="card-desc">Look up any employee record by their unique ID.</div>
+            <div class="card-num">FEATURE · 02</div>
           </div>
-          <div class="form-group">
-            <label for="emp-salary">Base Salary</label>
-            <input type="number" id="emp-salary" placeholder="e.g. 75000" />
+          <div class="card" onclick="navigate('gen-payslip')">
+            <div class="card-icon">📄</div>
+            <div class="card-title">Payslip</div>
+            <div class="card-desc">Generate a detailed pay breakdown for any employee.</div>
+            <div class="card-num">FEATURE · 03</div>
           </div>
-          <div class="form-group">
-            <label for="emp-dept">Department</label>
-            <input type="text" id="emp-dept" placeholder="e.g. Engineering" />
+          <div class="card" onclick="navigate('list-employees')">
+            <div class="card-icon">📋</div>
+            <div class="card-title">All Employees</div>
+            <div class="card-desc">View a full directory of all registered employees.</div>
+            <div class="card-num">FEATURE · 04</div>
+          </div>
+          <div class="card" onclick="navigate('del-employee')">
+            <div class="card-icon">🗑️</div>
+            <div class="card-title">Delete</div>
+            <div class="card-desc">Permanently remove an employee record.</div>
+            <div class="card-num">FEATURE · 05</div>
+          </div>
+          <div class="card" onclick="navigate('upd-employee')">
+            <div class="card-icon">✏️</div>
+            <div class="card-title">Update</div>
+            <div class="card-desc">Modify basic pay or OT hours for an employee.</div>
+            <div class="card-num">FEATURE · 06</div>
           </div>
         </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" onclick="submitAddEmployee()">
-            ＋ Submit Employee
-          </button>
-          <button class="btn btn-ghost" onclick="clearAddForm()">Reset</button>
-        </div>
-      </div>
-
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot dot-red"></div>
-          <div class="terminal-dot dot-yellow"></div>
-          <div class="terminal-dot dot-green"></div>
-          <span class="terminal-title">OUTPUT</span>
-          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
-        </div>
-        <div class="terminal-body" id="output-add">
-          <span class="out-line muted">// Awaiting input...</span>
-          <span class="cursor-blink"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- SEARCH EMPLOYEE -->
-    <section id="search-employee" class="section fade-in">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Search Employee</div>
-          <div class="page-subtitle">Query the payroll database by employee ID</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <div class="card-title-icon">🔍</div>
-          Search by Employee ID
-        </div>
-        <div class="input-row">
-          <div class="form-group">
-            <label for="search-id">Employee ID</label>
-            <input type="text" id="search-id" placeholder="e.g. EMP001" onkeydown="if(event.key==='Enter') submitSearch()" />
+        <!-- Global output panel shown on dashboard -->
+        <div style="margin-top:28px; flex:1; max-width:760px; display:flex; flex-direction:column; min-height:160px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;">
+          <div class="output-header">stdout · session log</div>
+          <div id="output" class="output-body">
+            <span class="out-line muted">// Waiting for WASM runtime…</span><br>
+            <span class="cursor-blink"></span>
           </div>
-          <button class="btn btn-primary" onclick="submitSearch()">◎ Search</button>
         </div>
       </div>
 
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot dot-red"></div>
-          <div class="terminal-dot dot-yellow"></div>
-          <div class="terminal-dot dot-green"></div>
-          <span class="terminal-title">OUTPUT</span>
-          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
-        </div>
-        <div class="terminal-body" id="output-search">
-          <span class="out-line muted">// Awaiting search query...</span>
-          <span class="cursor-blink"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- GENERATE PAYSLIP -->
-    <section id="gen-payslip" class="section fade-in">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Generate Payslip</div>
-          <div class="page-subtitle">Produce a detailed payslip for an employee</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <div class="card-title-icon">📄</div>
-          Payslip Generation
-        </div>
-        <div class="input-row">
-          <div class="form-group">
-            <label for="payslip-id">Employee ID</label>
-            <input type="text" id="payslip-id" placeholder="e.g. EMP001" onkeydown="if(event.key==='Enter') submitPayslip()" />
+      <!-- ── Feature 1: Add Employee ── -->
+      <div id="add-employee" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>01</span> Add Employee</div>
+              <div class="section-desc" style="margin-top:6px;">Register a new employee record. Gross pay and tax are calculated automatically.</div>
+            </div>
+            <div class="field">
+              <label>Employee ID</label>
+              <input type="number" id="emp-id" placeholder="e.g. 1001" />
+            </div>
+            <div class="field">
+              <label>Full Name</label>
+              <input type="text" id="emp-name" placeholder="e.g. Ravi Kumar" />
+            </div>
+            <div class="field">
+              <label>Basic Pay (Rs)</label>
+              <input type="number" id="emp-salary" placeholder="e.g. 30000" />
+            </div>
+            <div class="field">
+              <label>OT Hours</label>
+              <input type="number" id="emp-ot" placeholder="e.g. 10" min="0" />
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="submitAddEmployee()">▶ Submit</button>
+              <button class="btn btn-secondary" onclick="clearAddForm()">Clear</button>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="submitPayslip()">▤ Generate</button>
+          <div class="pane-output">
+            <div class="output-header">stdout · add employee</div>
+            <div id="output-add" class="output-body">
+              <span class="out-line muted">// Ready. Fill the form and press Submit.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot dot-red"></div>
-          <div class="terminal-dot dot-yellow"></div>
-          <div class="terminal-dot dot-green"></div>
-          <span class="terminal-title">PAYSLIP OUTPUT</span>
-          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
-        </div>
-        <div class="terminal-body" id="output-payslip">
-          <span class="out-line muted">// Enter an employee ID to generate payslip...</span>
-          <span class="cursor-blink"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- LIST ALL EMPLOYEES -->
-    <section id="list-employees" class="section fade-in">
-      <div class="page-header">
-        <div>
-          <div class="page-title">All Employees</div>
-          <div class="page-subtitle">Complete directory of registered employees</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <div class="card-title-icon">≡</div>
-          Employee Directory
-        </div>
-        <button class="btn btn-primary" onclick="submitListAll()">≡ Fetch All Employees</button>
-      </div>
-
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot dot-red"></div>
-          <div class="terminal-dot dot-yellow"></div>
-          <div class="terminal-dot dot-green"></div>
-          <span class="terminal-title">DIRECTORY OUTPUT</span>
-          <span class="terminal-clear" onclick="clearOutput()">[ clear ]</span>
-        </div>
-        <div class="terminal-body" id="output-list">
-          <span class="out-line muted">// Click "Fetch All Employees" to load the directory...</span>
-          <span class="cursor-blink"></span>
+      <!-- ── Feature 2: Search ── -->
+      <div id="search-employee" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>02</span> Search Employee</div>
+              <div class="section-desc" style="margin-top:6px;">Look up an employee record by their numeric ID.</div>
+            </div>
+            <div class="field">
+              <label>Employee ID</label>
+              <input type="number" id="search-id" placeholder="e.g. 1001" />
+            </div>
+            <button class="btn btn-primary" onclick="submitSearch()">🔍 Search</button>
+          </div>
+          <div class="pane-output">
+            <div class="output-header">stdout · search</div>
+            <div id="output-search" class="output-body">
+              <span class="out-line muted">// Enter an ID and press Search.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
 
-  </main>
-</div>
+      <!-- ── Feature 3: Payslip ── -->
+      <div id="gen-payslip" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>03</span> Generate Payslip</div>
+              <div class="section-desc" style="margin-top:6px;">Print a full pay breakdown including OT, gross, tax, and net pay.</div>
+            </div>
+            <div class="field">
+              <label>Employee ID</label>
+              <input type="number" id="payslip-id" placeholder="e.g. 1001" />
+            </div>
+            <button class="btn btn-primary" onclick="submitPayslip()">📄 Generate</button>
+          </div>
+          <div class="pane-output">
+            <div class="output-header">stdout · payslip</div>
+            <div id="output-payslip" class="output-body">
+              <span class="out-line muted">// Enter an employee ID to generate their payslip.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<!-- Exit Modal -->
-<div class="modal-overlay" id="exit-modal">
-  <div class="modal">
-    <h3>Exit PayrollOS?</h3>
-    <p>This will send the exit command (0) to the C program and terminate the session. All unsaved data will be lost.</p>
+      <!-- ── Feature 4: List All ── -->
+      <div id="list-employees" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>04</span> List All Employees</div>
+              <div class="section-desc" style="margin-top:6px;">Fetch and display the full employee directory with pay details.</div>
+            </div>
+            <button class="btn btn-primary" onclick="submitListAll()">☰ Fetch All</button>
+          </div>
+          <div class="pane-output">
+            <div class="output-header">stdout · directory</div>
+            <div id="output-list" class="output-body">
+              <span class="out-line muted">// Press "Fetch All" to list all employees.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Feature 5: Delete ── -->
+      <div id="del-employee" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>05</span> Delete Employee</div>
+              <div class="section-desc" style="margin-top:6px;">Permanently remove an employee from the system. Type <code style="color:var(--accent)">y</code> to confirm.</div>
+            </div>
+            <div class="field">
+              <label>Employee ID</label>
+              <input type="number" id="del-id" placeholder="e.g. 1001" />
+            </div>
+            <div class="field">
+              <label>Confirm Delete (y / n)</label>
+              <input type="text" id="del-confirm" placeholder="y" maxlength="1" />
+            </div>
+            <button class="btn btn-danger" onclick="submitDelete()">✕ Delete</button>
+          </div>
+          <div class="pane-output">
+            <div class="output-header">stdout · delete</div>
+            <div id="output-delete" class="output-body">
+              <span class="out-line muted">// Enter an ID and confirm to delete the record.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Feature 6: Update ── -->
+      <div id="upd-employee" class="section">
+        <div class="split">
+          <div class="pane-form">
+            <div>
+              <div class="section-title"><span>06</span> Update Employee</div>
+              <div class="section-desc" style="margin-top:6px;">Modify an employee's basic pay, OT hours, or both. Recalculates gross, tax, and net.</div>
+            </div>
+            <div class="field">
+              <label>Employee ID</label>
+              <input type="number" id="upd-id" placeholder="e.g. 1001" />
+            </div>
+            <div class="field">
+              <label>What to Update</label>
+              <select id="upd-choice" onchange="toggleUpdateFields()">
+                <option value="1">1 — Basic Pay only</option>
+                <option value="2">2 — OT Hours only</option>
+                <option value="3">3 — Both</option>
+              </select>
+            </div>
+            <div id="upd-basic-wrap" class="field">
+              <label>New Basic Pay (Rs)</label>
+              <input type="number" id="upd-basic" placeholder="e.g. 35000" />
+            </div>
+            <div id="upd-ot-wrap" class="field" style="display:none;">
+              <label>New OT Hours</label>
+              <input type="number" id="upd-ot" placeholder="e.g. 15" min="0" />
+            </div>
+            <button class="btn btn-primary" onclick="submitUpdate()">✎ Update</button>
+          </div>
+          <div class="pane-output">
+            <div class="output-header">stdout · update</div>
+            <div id="output-update" class="output-body">
+              <span class="out-line muted">// Select an update option and press Update.</span><br>
+              <span class="cursor-blink"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── Exit modal ── -->
+<div id="exit-modal">
+  <div class="modal-box">
+    <h2>Exit Session?</h2>
+    <p>This will send the exit command (0) to the WASM runtime and end the session.</p>
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="doExit()">⏻ Exit</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doExit()">Exit</button>
     </div>
   </div>
 </div>
 
-<!-- Emscripten compiled module -->
+<!-- ── Scripts ── -->
+<script>
+  /* ── Update field visibility based on sub-choice ── */
+  function toggleUpdateFields() {
+    const sub = document.getElementById('upd-choice').value;
+    document.getElementById('upd-basic-wrap').style.display = (sub === '1' || sub === '3') ? '' : 'none';
+    document.getElementById('upd-ot-wrap').style.display    = (sub === '2' || sub === '3') ? '' : 'none';
+  }
+  toggleUpdateFields(); // init
+</script>
+
+<!-- your compiled JS (Emscripten output) -->
 <script src="main.js"></script>
 
-<script>
-// ─────────────────────────────────────────────
-//  WASM / Emscripten bridge
-// ─────────────────────────────────────────────
-
-let inputQueue = [];
-let moduleReady = false;
-let activeOutputEl = null;
-
-// Emscripten Module configuration
-// Must be defined BEFORE main.js loads (or merged via Module object)
-var Module = {
-  // Feed stdin from our input queue
-  stdin: function () {
-    if (inputQueue.length > 0) {
-      const line = inputQueue.shift();
-      let i = 0;
-      return function () {
-        if (i < line.length) return line.charCodeAt(i++);
-        if (i === line.length) { i++; return 10; } // newline
-        return null;
-      };
-    }
-    return null;
-  },
-
-  // Capture stdout to active terminal panel
-  print: function (text) {
-    appendOutput(text, 'normal');
-  },
-
-  printErr: function (text) {
-    appendOutput(text, 'warn');
-  },
-
-  onRuntimeInitialized: function () {
-    moduleReady = true;
-    const statusEl = document.getElementById('wasm-status');
-    statusEl.textContent = '✓ WASM module ready';
-    statusEl.className = 'ready';
-    appendOutput('// WASM runtime initialised successfully.', 'info', 'output');
-    appendOutput('// Select an operation from the sidebar.', 'muted', 'output');
-  }
-};
-
-// Gracefully handle missing main.js
-window.addEventListener('error', function (e) {
-  if (e.filename && e.filename.includes('main.js')) {
-    const statusEl = document.getElementById('wasm-status');
-    statusEl.textContent = '⚠ main.js not found — demo mode';
-    statusEl.className = 'error';
-    appendOutput('// [DEMO MODE] main.js not loaded.', 'warn', 'output');
-    appendOutput('// Place your compiled main.js + main.wasm next to this file.', 'muted', 'output');
-    moduleReady = false; // will use simulation below
-  }
-}, true);
-
-
-// ─────────────────────────────────────────────
-//  Output helpers
-// ─────────────────────────────────────────────
-
-function getActiveOutputId() {
-  const sections = ['add-employee', 'search-employee', 'gen-payslip', 'list-employees'];
-  const ids = ['output-add', 'output-search', 'output-payslip', 'output-list'];
-  for (let i = 0; i < sections.length; i++) {
-    if (document.getElementById(sections[i]).classList.contains('active')) return ids[i];
-  }
-  return 'output';
-}
-
-function appendOutput(text, cls = 'normal', targetId = null) {
-  const id = targetId || getActiveOutputId();
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  // Remove cursor
-  const cursor = el.querySelector('.cursor-blink');
-  if (cursor) cursor.remove();
-
-  const span = document.createElement('span');
-  span.className = `out-line ${cls}`;
-  span.textContent = text;
-  el.appendChild(span);
-  el.appendChild(document.createElement('br'));
-
-  // Re-add cursor
-  const cur = document.createElement('span');
-  cur.className = 'cursor-blink';
-  el.appendChild(cur);
-
-  el.scrollTop = el.scrollHeight;
-}
-
-function clearOutput() {
-  const id = getActiveOutputId();
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.innerHTML = '<span class="out-line muted">// Output cleared.</span><br><span class="cursor-blink"></span>';
-}
-
-
-// ─────────────────────────────────────────────
-//  Navigation
-// ─────────────────────────────────────────────
-
-function navigate(sectionId, navEl) {
-  // Hide all sections
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-  // Show target
-  const target = document.getElementById(sectionId);
-  if (target) {
-    target.classList.add('active');
-    target.classList.remove('fade-in');
-    void target.offsetWidth; // reflow
-    target.classList.add('fade-in');
-  }
-
-  // Activate nav
-  if (navEl) {
-    navEl.classList.add('active');
-  } else {
-    const match = document.querySelector(`[data-section="${sectionId}"]`);
-    if (match) match.classList.add('active');
-  }
-}
-
-
-// ─────────────────────────────────────────────
-//  Send inputs to C program
-// ─────────────────────────────────────────────
-
-function sendToModule(inputs) {
-  if (!moduleReady) {
-    // Demo mode simulation
-    demoSimulate(inputs);
-    return;
-  }
-  inputs.forEach(line => inputQueue.push(line));
-  // Call Module's main (re-run or trigger via stdin)
-  if (typeof Module.callMain === 'function') {
-    Module.callMain([]);
-  } else if (typeof Module._main === 'function') {
-    Module._main();
-  }
-}
-
-// ─────────────────────────────────────────────
-//  Demo simulation (no WASM loaded)
-// ─────────────────────────────────────────────
-
-const demoEmployees = {};
-
-function demoSimulate(inputs) {
-  const choice = inputs[0];
-  appendOutput(`> Command: ${choice}`, 'info');
-
-  switch (choice) {
-    case '1': {
-      const [, id, name, salary, dept] = inputs;
-      if (demoEmployees[id]) {
-        appendOutput(`[ERROR] Employee ID ${id} already exists.`, 'warn');
-      } else {
-        demoEmployees[id] = { id, name, salary, dept };
-        appendOutput(`[OK] Employee added successfully.`, 'info');
-        appendOutput(`     ID: ${id} | Name: ${name} | Salary: ${salary} | Dept: ${dept}`, 'normal');
-      }
-      break;
-    }
-    case '2': {
-      const id = inputs[1];
-      const emp = demoEmployees[id];
-      if (emp) {
-        appendOutput(`[FOUND] Employee record:`, 'info');
-        appendOutput(`  ID         : ${emp.id}`, 'normal');
-        appendOutput(`  Name       : ${emp.name}`, 'normal');
-        appendOutput(`  Salary     : $${Number(emp.salary).toLocaleString()}`, 'normal');
-        appendOutput(`  Department : ${emp.dept}`, 'normal');
-      } else {
-        appendOutput(`[NOT FOUND] No employee with ID: ${id}`, 'warn');
-      }
-      break;
-    }
-    case '3': {
-      const id = inputs[1];
-      const emp = demoEmployees[id];
-      if (emp) {
-        const gross = Number(emp.salary);
-        const tax = (gross * 0.2).toFixed(2);
-        const net = (gross - tax).toFixed(2);
-        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
-        appendOutput(`  PAYSLIP — ${new Date().toLocaleDateString()}`, 'info');
-        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
-        appendOutput(`  Employee   : ${emp.name} (${emp.id})`, 'normal');
-        appendOutput(`  Department : ${emp.dept}`, 'normal');
-        appendOutput(`  Gross Pay  : $${gross.toLocaleString()}`, 'normal');
-        appendOutput(`  Tax (20%)  : -$${Number(tax).toLocaleString()}`, 'warn');
-        appendOutput(`  Net Pay    : $${Number(net).toLocaleString()}`, 'info');
-        appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'muted');
-      } else {
-        appendOutput(`[NOT FOUND] No employee with ID: ${id}`, 'warn');
-      }
-      break;
-    }
-    case '4': {
-      const keys = Object.keys(demoEmployees);
-      if (keys.length === 0) {
-        appendOutput(`[INFO] No employees registered yet.`, 'muted');
-      } else {
-        appendOutput(`[DIRECTORY] ${keys.length} employee(s):`, 'info');
-        keys.forEach((k, i) => {
-          const e = demoEmployees[k];
-          appendOutput(`  ${i+1}. ${e.id.padEnd(10)} ${e.name.padEnd(20)} ${e.dept}`, 'normal');
-        });
-      }
-      break;
-    }
-    case '0':
-      appendOutput(`[EXIT] Program terminated. Session ended.`, 'warn');
-      break;
-    default:
-      appendOutput(`[ERROR] Unknown command: ${choice}`, 'warn');
-  }
-}
-
-
-// ─────────────────────────────────────────────
-//  Action handlers
-// ─────────────────────────────────────────────
-
-function submitAddEmployee() {
-  const id = document.getElementById('emp-id').value.trim();
-  const name = document.getElementById('emp-name').value.trim();
-  const salary = document.getElementById('emp-salary').value.trim();
-  const dept = document.getElementById('emp-dept').value.trim();
-
-  if (!id || !name || !salary || !dept) {
-    appendOutput('[VALIDATION] All fields are required.', 'warn');
-    return;
-  }
-
-  appendOutput(`Submitting: Add Employee — ${name} (${id})`, 'info');
-  sendToModule(['1', id, name, salary, dept]);
-}
-
-function clearAddForm() {
-  ['emp-id','emp-name','emp-salary','emp-dept'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-}
-
-function submitSearch() {
-  const id = document.getElementById('search-id').value.trim();
-  if (!id) { appendOutput('[VALIDATION] Please enter an Employee ID.', 'warn'); return; }
-  appendOutput(`Searching for employee: ${id}`, 'info');
-  sendToModule(['2', id]);
-}
-
-function submitPayslip() {
-  const id = document.getElementById('payslip-id').value.trim();
-  if (!id) { appendOutput('[VALIDATION] Please enter an Employee ID.', 'warn'); return; }
-  appendOutput(`Generating payslip for: ${id}`, 'info');
-  sendToModule(['3', id]);
-}
-
-function submitListAll() {
-  appendOutput('Fetching employee directory...', 'info');
-  sendToModule(['4']);
-}
-
-function confirmExit() {
-  document.getElementById('exit-modal').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('exit-modal').classList.remove('open');
-}
-
-function doExit() {
-  closeModal();
-  navigate('dashboard');
-  appendOutput('Sending exit command (0) to program...', 'warn', 'output');
-  sendToModule(['0']);
-}
-
-// Close modal on backdrop click
-document.getElementById('exit-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-</script>
+<!-- your bridge JS -->
+<script src="script.js"></script>
 
 </body>
 </html>
